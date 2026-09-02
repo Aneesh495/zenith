@@ -1,0 +1,17 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Ensure autoloader is loaded
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+} else {
+    require_once __DIR__ . '/../src/autoload.php';
+}
+
+use Zenith\Cli\Application;
+
+$app = new Application();
+$exitCode = $app->run($argv);
+exit($exitCode);

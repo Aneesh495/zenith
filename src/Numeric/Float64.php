@@ -1,0 +1,274 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Zenith\Numeric;
+
+use Zenith\Runtime\Trap;
+
+/**
+ * WebAssembly 64-bit floating point arithmetic.
+ *
+ * Implements IEEE 754 double precision float arithmetic, bit exact operations,
+ * rounding modes, and trap checking according to the WebAssembly 2.0 specification.
+ */
+final class Float64
+{
+    public static function add(float $a, float $b): float
+    {
+        return $a + $b;
+    }
+
+    public static function sub(float $a, float $b): float
+    {
+        return $a - $b;
+    }
+
+    public static function mul(float $a, float $b): float
+    {
+        return $a * $b;
+    }
+
+    public static function div(float $a, float $b): float
+    {
+        return $a / $b;
+    }
+
+    public static function sqrt(float $a): float
+    {
+        if (is_nan($a)) {
+            return NAN;
+        }
+
+        if ($a < 0.0 && !BitCast::isNegativeZero64($a)) {
+            return NAN;
+        }
+
+        return sqrt($a);
+    }
+
+    public static function min(float $a, float $b): float
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return NAN;
+        }
+
+        if ($a === 0.0 && $b === 0.0) {
+            if (BitCast::isNegativeZero64($a) || BitCast::isNegativeZero64($b)) {
+                return BitCast::i64ToF64((int)-9223372036854775808);
+            }
+            return 0.0;
+        }
+
+        return $a < $b ? $a : $b;
+    }
+
+    public static function max(float $a, float $b): float
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return NAN;
+        }
+
+        if ($a === 0.0 && $b === 0.0) {
+            if (BitCast::isNegativeZero64($a) && BitCast::isNegativeZero64($b)) {
+                return BitCast::i64ToF64((int)-9223372036854775808);
+            }
+            return 0.0;
+        }
+
+        return $a > $b ? $a : $b;
+    }
+
+    public static function copysign(float $a, float $b): float
+    {
+        $bitsA = BitCast::f64ToI64($a);
+        $bitsB = BitCast::f64ToI64($b);
+
+        $signB = $bitsB & (int)-9223372036854775808;
+        $magA = $bitsA & 0x7FFFFFFFFFFFFFFF;
+
+        return BitCast::i64ToF64($signB | $magA);
+    }
+
+    public static function abs(float $a): float
+    {
+        $bits = BitCast::f64ToI64($a) & 0x7FFFFFFFFFFFFFFF;
+        return BitCast::i64ToF64($bits);
+    }
+
+    public static function neg(float $a): float
+    {
+        $bits = BitCast::f64ToI64($a) ^ (int)-9223372036854775808;
+        return BitCast::i64ToF64($bits);
+    }
+
+    public static function ceil(float $a): float
+    {
+        return ceil($a);
+    }
+
+    public static function floor(float $a): float
+    {
+        return floor($a);
+    }
+
+    public static function trunc(float $a): float
+    {
+        if (is_nan($a) || is_infinite($a)) {
+            return $a;
+        }
+        return $a >= 0.0 ? floor($a) : ceil($a);
+    }
+
+    public static function nearest(float $a): float
+    {
+        if (is_nan($a) || is_infinite($a)) {
+            return $a;
+        }
+        return round($a, 0, PHP_ROUND_HALF_EVEN);
+    }
+
+    public static function eq(float $a, float $b): int
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return 0;
+        }
+        return $a == $b ? 1 : 0;
+    }
+
+    public static function ne(float $a, float $b): int
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return 1;
+        }
+        return $a != $b ? 1 : 0;
+    }
+
+    public static function lt(float $a, float $b): int
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return 0;
+        }
+        return $a < $b ? 1 : 0;
+    }
+
+    public static function gt(float $a, float $b): int
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return 0;
+        }
+        return $a > $b ? 1 : 0;
+    }
+
+    public static function le(float $a, float $b): int
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return 0;
+        }
+        return $a <= $b ? 1 : 0;
+    }
+
+    public static function ge(float $a, float $b): int
+    {
+        if (is_nan($a) || is_nan($b)) {
+            return 0;
+        }
+        return $a >= $b ? 1 : 0;
+    }
+
+    public static function trunc_to_i32_s(float $val): int
+    {
+        if (is_nan($val)) {
+            throw Trap::invalidConversion();
+        }
+        if ($val >= 2147483648.0 || $val <= -2147483649.0) {
+            throw Trap::integerOverflow();
+        }
+        return (int)$val;
+    }
+
+    public static function trunc_to_i32_u(float $val): int
+    {
+        if (is_nan($val)) {
+            throw Trap::invalidConversion();
+        }
+        if ($val >= 4294967296.0 || $val <= -1.0) {
+            throw Trap::integerOverflow();
+        }
+        return Int32::toSigned((int)$val);
+    }
+
+    public static function trunc_to_i64_s(float $val): int
+    {
+        if (is_nan($val)) {
+            throw Trap::invalidConversion();
+        }
+        if ($val >= 9223372036854775808.0 || $val <= -9223372036854775809.0) {
+            throw Trap::integerOverflow();
+        }
+        return (int)$val;
+    }
+
+    public static function trunc_to_i64_u(float $val): int
+    {
+        if (is_nan($val)) {
+            throw Trap::invalidConversion();
+        }
+        if ($val >= 18446744073709551616.0 || $val <= -1.0) {
+            throw Trap::integerOverflow();
+        }
+        $g = gmp_init(sprintf('%.0f', floor($val)));
+        return Int64::fromGmp($g);
+    }
+
+    public static function trunc_sat_to_i32_s(float $val): int
+    {
+        if (is_nan($val)) {
+            return 0;
+        }
+        if ($val <= (float)Int32::MIN_VALUE) {
+            return Int32::MIN_VALUE;
+        }
+        if ($val >= (float)Int32::MAX_VALUE) {
+            return Int32::MAX_VALUE;
+        }
+        return (int)$val;
+    }
+
+    public static function trunc_sat_to_i32_u(float $val): int
+    {
+        if (is_nan($val) || $val <= 0.0) {
+            return 0;
+        }
+        if ($val >= 4294967295.0) {
+            return -1;
+        }
+        return Int32::toSigned((int)$val);
+    }
+
+    public static function trunc_sat_to_i64_s(float $val): int
+    {
+        if (is_nan($val)) {
+            return 0;
+        }
+        if ($val <= (float)Int64::MIN_VALUE) {
+            return Int64::MIN_VALUE;
+        }
+        if ($val >= (float)Int64::MAX_VALUE) {
+            return Int64::MAX_VALUE;
+        }
+        return (int)$val;
+    }
+
+    public static function trunc_sat_to_i64_u(float $val): int
+    {
+        if (is_nan($val) || $val <= 0.0) {
+            return 0;
+        }
+        if ($val >= 18446744073709551615.0) {
+            return -1;
+        }
+        $g = gmp_init(sprintf('%.0f', floor($val)));
+        return Int64::fromGmp($g);
+    }
+}

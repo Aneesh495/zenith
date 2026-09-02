@@ -1,0 +1,42 @@
+{
+    "name": "aneesh/zenith",
+    "description": "Zero-dependency WebAssembly 2.0 virtual machine, WASI runtime, WAT assembler, disassembler, and debugger in pure PHP",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Aneesh Krishna",
+            "email": "aneesh@purdue.edu"
+        }
+    ],
+    "require": {
+        "php": ">=8.2"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Zenith\\": "src/"
+        },
+        "files": [
+            "src/autoload.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Zenith\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/zenith"
+    ],
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit",
+        "bench": "bin/zenith bench"
+    }
+}
